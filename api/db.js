@@ -18,6 +18,7 @@ const connectDB = async () => {
     await db.connect();
     console.log("Database connected successfully");
 
+
     // Create table for users
     const createTableUser = `
       CREATE TABLE IF NOT EXISTS users (
@@ -28,6 +29,7 @@ const connectDB = async () => {
         wardNo VARCHAR(10) NOT NULL,
         age INT NOT NULL,
         maritalStatus BOOLEAN NOT NULL,
+        noOfChild INT NOT NULL DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
@@ -37,12 +39,13 @@ const connectDB = async () => {
       CREATE TABLE IF NOT EXISTS children (
         id SERIAL PRIMARY KEY,
         user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        noOfChild INT NOT NULL DEFAULT 0,
-        childName VARCHAR(100) NOT NULL,
-        childAge INT NOT NULL
+        childName VARCHAR(100) DEFAULT NULL,
+        childAge INT  DEFAULT NULL,
+         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
-
+    // await db.none('DROP TABLE IF EXISTS children');
+    // await db.none('DROP TABLE IF EXISTS users');
     // Execute table creation queries
     await db.none(createTableUser); // Use `none` for statements with no result
     console.log("Users table created successfully");
