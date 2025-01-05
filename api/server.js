@@ -72,7 +72,7 @@ app.post("/api/v1/create-users", async (req, res) => {
         childname: child,
         childage: childAge[index],
       }));
-
+    //Batch insert children data
       const insertQuery = pgp.helpers.insert(
         childInsertions,
         ["user_id", "childname", "childage"],
@@ -96,6 +96,59 @@ app.post("/api/v1/create-users", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+app.get("/api/v1/users", async (req, res) => {
+ try{
+   const users = await db.any(`SELECT * FROM users`);
+   const usersWithChildren = await Promise.all
+       (users.map( async (ur) => { 
+    if(ur.noofchild > 0) 
+       ur.childname =  await db.any(`SELECT * FROM children WHERE user_id = $1 `, [ur.id])
+   
+      return ur
+    }))
+    res.status(200).json({ data: usersWithChildren });
+
+ }catch(error){
+   console.error("Error:", error);
+   res.status(500).json({ error: error.message });
+ }
+})
+app.get("/api/v1/users/:id", async (req, res) => {
+  const userId = req.params.id;
+
+  try {
+    // Query to fetch user and their children
+    const userData = await db.task(async t => {
+      const user = await t.oneOrNone(
+        `SELECT * FROM users WHERE id = $1`,
+        [userId]
+      );
+
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      const children = await t.manyOrNone(
+        `SELECT childname, childage FROM children WHERE user_id = $1`,
+        [userId]
+      );
+
+      return { ...user, children };
+    });
+
+    res.status(200).json({
+      message: "User data retrieved successfully",
+      data: userData,
+    });
+  } catch (error) {
+    console.error("Error fetching user data:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+
 
   
 
