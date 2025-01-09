@@ -81,10 +81,12 @@ app.post("/api/v1/create-users", async (req, res) => {
 
       await db.none(insertQuery);
       newUser.children = childInsertions;
-    } else {
-      // Insert a record in children table if no children data is provided
-      await db.none(`INSERT INTO children (user_id) VALUES ($1)`, [newUser.id]);
-    }
+    } 
+    //if no children ,no need to insert  null in  children table
+    //else {
+    //   // Insert a record in children table if no children data is provided
+    //   await db.none(`INSERT INTO children (user_id) VALUES ($1)`, [newUser.id]);
+    // }
 
    
     res.status(201).json({
@@ -147,10 +149,136 @@ app.get("/api/v1/users/:id", async (req, res) => {
   }
 });
 
+app.patch("/api/v1/users/update/:id", async (req, res) => {
+  const userId = req.params.id;
+  const {
+    name,
+    phone,
+    address,
+    wardNo,
+    age,
+    maritalStatus,
+    noOfChild,
+    childName,
+    childAge,
+  } = req.body;
+
+  try {
+    // Input validation
+    if (!name || !phone || !address || !wardNo || !age) {
+      return res.status(400).json({ error: "Required user data is missing." });
+    }
+
+    if (maritalStatus && noOfChild > 0) {
+      // Validate children data
+      if (
+        !Array.isArray(childName) ||
+        !Array.isArray(childAge) ||
+        childName.length !== noOfChild ||
+        childAge.length !== noOfChild
+      ) {
+        return res.status(400).json({
+          error: "Number of children does not match data provided.",
+        });
+      }
+
+      // Check every child has both a name and an age
+      const isValidChildren = childName.every(
+        (name, index) => name && childAge[index] !== undefined
+      );
+
+      if (!isValidChildren) {
+        return res.status(400).json({
+          error: "Each child must have both a name and an age.",
+        });
+      }
+    }
+
+    // Use transaction for atomic operations
+    const result = await db.tx(async (t) => {
+      // Check if user exists
+      const existingUser = await t.oneOrNone(
+        "SELECT * FROM users WHERE id = $1",
+        [userId]
+      );
+
+      if (!existingUser) {
+        return res.status(400).json({ message: "User not found." });
+      }
+
+      // Update user data
+      // updated_at = CURRENT_TIMESTAMP
+      const updatedUser = await t.one(
+        `UPDATE users 
+         SET name = $1, phone = $2, address = $3, "wardno" = $4, 
+             age = $5, "maritalstatus" = $6, "noofchild" = $7
+           
+         WHERE id = $8 
+         RETURNING *`,
+        [name, phone, address, wardNo, age, maritalStatus, noOfChild, userId]
+      );
 
 
+      // Handle children data
+      if (maritalStatus && noOfChild > 0) {
+        // Delete existing children records
+        await t.none("DELETE FROM children WHERE user_id = $1", [userId]);
 
-  
+        // Prepare children data for insertion
+        const childInsertions = childName.map((child, index) => ({
+          user_id: userId,
+          childname: child,
+          childage: childAge[index],
+        }));
+
+        // Batch insert new children data
+        const insertQuery = pgp.helpers.insert(
+          childInsertions,
+          ["user_id", "childname", "childage"],
+          "children"
+        );
+        await t.none(insertQuery);
+
+        // Attach children to response
+        updatedUser.children = childInsertions;
+      } else {
+        // Clear children records if no children
+        await t.none("DELETE FROM children WHERE user_id = $1", [userId]);
+        updatedUser.children = [];
+      }
+
+      return updatedUser;
+    });
+
+    res.status(200).json({
+      message: "User updated successfully",
+      data: result,
+    });
+
+  } catch (error) {
+    console.error("Error updating user data:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+//now delete turn
+  app.delete("/api/v1/users/delete/:id", async (req, res) => {
+    const userId = req.params.id;
+     try{
+        const user = await db.oneOrNone(`SELECT * FROM users WHERE id = $1`, [userId]);
+        if(!user){
+          res.status(404).json({message: "User not found"});
+          return;
+        }
+        await db.none(`DELETE FROM children WHERE user_id = $1`, [userId]);
+        await db.none(`DELETE FROM users WHERE id = $1`, [userId]);
+        res.status(200).json({message: "User deleted successfully"});
+
+     }catch(error){
+       console.error("Error:", error);
+       res.status(500).json({ error: error.message });
+     }
+  });
 
 
 
