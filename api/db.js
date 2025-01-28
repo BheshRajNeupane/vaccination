@@ -1,13 +1,11 @@
-const pgp = require('pg-promise')();
-
- 
+const pgp = require("pg-promise")();
 
 const connection = {
-  host: process.env.DB_HOST || 'localhost',
+  host: process.env.DB_HOST || "localhost",
   port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'vaccination',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME || "vaccination",
+  user: process.env.DB_USER || "postgres",
+  password: "shubekshya@123",
 };
 
 const db = pgp(connection);
@@ -17,7 +15,6 @@ const connectDB = async () => {
     // Test database connection
     await db.connect();
     console.log("Database connected successfully");
-
 
     // Create table for users
     const createTableUser = `
@@ -44,6 +41,18 @@ const connectDB = async () => {
          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
+
+    //Create table for VaccinationInfo
+    const createTableVaccinationInfo = `
+      CREATE TABLE IF NOT EXISTS vaccinationInfo (
+      id SERIAL PRIMARY KEY,
+      vaccination_name VARCHAR(100) DEFAULT NULL,
+      date TIMESTAMP DEFAULT NULL,
+      remarks VARCHAR(100) DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+    `;
+    
     // await db.none('DROP TABLE IF EXISTS children');
     // await db.none('DROP TABLE IF EXISTS users');
     // Execute table creation queries
@@ -52,6 +61,10 @@ const connectDB = async () => {
 
     await db.none(createTableChildren);
     console.log("Children table created successfully");
+
+    await db.none(createTableVaccinationInfo);
+    console.log("VaccinationInfo table created successfully");
+
   } catch (error) {
     console.error("Error during database setup:", error.message || error);
   }
