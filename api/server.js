@@ -6,6 +6,7 @@ const cors = require("cors");
 const pgp = require("pg-promise")();
 dotenv.config();
 const { db, connectDB } = require("./db");
+const { sendBulkSMS } = require("./sendSMS.js")
 
 connectDB();
 
@@ -107,6 +108,8 @@ app.get("/api/v1/users", async (req, res) => {
             `SELECT * FROM children WHERE user_id = $1 `,
             [ur.id]
           );
+
+         
 
         return ur;
       })
@@ -357,6 +360,22 @@ app.delete("/api/v1/vaccinationInfo/delete/:id", async (req, res) => {
   }
 });
 
+//sendBulkSMS
+
+app.get("/api/v1/sendBulkSMS", async (req, res) => {
+  try {
+    //for testing
+    const users = await db.any(`SELECT * FROM users`);
+  
+      sendBulkSMS( users );
+    res.status(200).json({ message : "sms send sucessfull"});
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(4000, () => {
   console.log("Server is running on port 4000");
 });
+

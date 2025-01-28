@@ -5,7 +5,7 @@ const connection = {
   port: process.env.DB_PORT || 5432,
   database: process.env.DB_NAME || "vaccination",
   user: process.env.DB_USER || "postgres",
-  password: "shubekshya@123",
+  password:  process.env.DB_PASSWORD ||"shubekshya@123",
 };
 
 const db = pgp(connection);
